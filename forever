@@ -1,0 +1,6 @@
+#!/bin/sh
+
+while true; do
+	echo "i am running, input arg: "$1 
+	sleep 10
+done
