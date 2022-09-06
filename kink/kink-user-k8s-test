@@ -1,0 +1,4 @@
+kubectl exec sysbox-master -- \
+  kubectl --kubeconfig=/etc/kubernetes/admin.conf run nginx --image=nginx
+kubectl exec sysbox-master -- \
+  kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods
