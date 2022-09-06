@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -x
+# Delete Kubernetes nodes
+kubectl delete pods sysbox-master sysbox-worker-1 sysbox-worker-2

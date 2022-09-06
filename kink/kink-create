@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -x
+set -e
+k8s_version=v1.20.12
+k8s_node_image=<registry>/sysbox-k8s-node:latest
+k8s_dns_domain=inner-cluster.local
+k8s_service_cidr=10.112.0.0/12
+k8s_pod_cidr=10.245.0.0/16
+flannel_version=v0.15.1
+# Create Kubernetes nodes
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sysbox-master
+  annotations:
+    io.kubernetes.cri-o.userns-mode: "auto:size=65536"
+spec:
+  runtimeClassName: sysbox-runc
+  containers:
+  - name: node
+    image: $k8s_node_image
+    ports:
+      - containerPort: 22
+      - containerPort: 6443
+  restartPolicy: Always
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sysbox-worker-1
+  annotations:
+    io.kubernetes.cri-o.userns-mode: "auto:size=65536"
+spec:
+  runtimeClassName: sysbox-runc
+  containers:
+  - name: node
+    image: $k8s_node_image
+    ports:
+      - containerPort: 22
+  restartPolicy: Always
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sysbox-worker-2
+  annotations:
+    io.kubernetes.cri-o.userns-mode: "auto:size=65536"
+spec:
+  runtimeClassName: sysbox-runc
+  containers:
+  - name: node
+    image: $k8s_node_image
+    ports:
+      - containerPort: 22
+  restartPolicy: Always
+EOF
+# Initialise k8s-master
+kubectl wait --timeout=300s --for=condition=ready pod sysbox-master
+sleep 10 # Wait for containerd ready
+kubectl exec sysbox-master -- \
+  kubeadm init --kubernetes-version=$k8s_version --cri-socket=/var/run/containerd/containerd.sock \
+    --service-cidr=$k8s_service_cidr \
+    --service-dns-domain=$k8s_dns_domain \
+    --pod-network-cidr=$k8s_pod_cidr
+# Download kubeconfig
+kubectl cp sysbox-master:/etc/kubernetes/admin.conf sysbox.kubeconfig
+# Configure Flannel CNI
+kubectl exec sysbox-master -- \
+  kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/coreos/flannel/$flannel_version/Documentation/kube-flannel.yml
+# Verify master node is good
+kubectl exec sysbox-master -- \
+  kubectl --kubeconfig=/etc/kubernetes/admin.conf get all -A
+# Join the worker nodes
+join_cmd=$(kubectl exec sysbox-master -- kubeadm token create --print-join-command 2> /dev/null)
+kubectl wait --timeout=300s --for=condition=ready pod sysbox-worker-1
+kubectl exec sysbox-worker-1 -- $join_cmd
+kubectl wait --timeout=300s --for=condition=ready pod sysbox-worker-2
+kubectl exec sysbox-worker-2 -- $join_cmd
+# Verify all is good
+kubectl exec sysbox-master -- \
+  kubectl --kubeconfig=/etc/kubernetes/admin.conf get all -A
