@@ -35,7 +35,7 @@ RUN apt-get update && \
  vim \
  wget && \
  # Install Docker using official repository
- curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add — && \
+ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -- && \
  apt-key fingerprint 0EBFCD88 && \
  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
  apt-get update && apt-get install --no-install-recommends --yes \
@@ -70,4 +70,4 @@ STOPSIGNAL SIGRTMIN+3
 # Expose OpenSSH server
 EXPOSE 22
 # Set systemd as entrypoint.
-ENTRYPOINT [ "/sbin/init", " — log-level=err" ]
+ENTRYPOINT [ "/sbin/init", "--log-level=err" ]

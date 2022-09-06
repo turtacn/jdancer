@@ -2,7 +2,7 @@
 set -x
 set -e
 k8s_version=v1.20.12
-k8s_node_image=<registry>/sysbox-k8s-node:latest
+k8s_node_image=sysbox-k8s-node:latest
 k8s_dns_domain=inner-cluster.local
 k8s_service_cidr=10.112.0.0/12
 k8s_pod_cidr=10.245.0.0/16
